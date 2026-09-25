@@ -1,0 +1,91 @@
+# Phase 1 configuration. This file IS your pre-registered sampling frame, so
+# record the values you actually ran with.
+
+snapshot_label: "2026-08-22"     # e.g. "2026-08-22"; pins the snapshot
+
+output_dir: "./phase1_out"
+seed: 42
+
+# --- search / API ---
+per_page: 100
+size_min: 0
+size_max: 384000        # GitHub code search only indexes files < 384 KB
+cap: 1000               # per-query result cap; partition.py slices under this
+max_file_bytes: 400000  # skip larger blobs when fetching
+
+# --- quality filter / stratification ---
+quality:
+  min_stars: 5              # primary stratum requires >= this many stars
+  max_inactive_days: 1825   # ...and a push within ~5 years
+  exclude_forks: true
+  exclude_archived: true
+
+# --- near-duplicate detection (MinHash-LSH); num_perm must divide by bands ---
+dedup:
+  shingle_k: 5
+  num_perm: 128
+  bands: 32               # 32 bands x 4 rows = 128
+  jaccard_threshold: 0.8
+
+# --- final sampling (stage 6) ---
+target_sample_size: 400
+sample_stratum_size: 100
+
+# --- subsample (narrows the merged manifest before fetch) ---
+# Per-term caps; groups smaller than their cap are kept whole. The POST-policy
+# terms carry the study's primary finding (loose conditions), so keep them
+# generously; the high-volume, CloudFront-contaminated GET terms are capped hard.
+subsample:
+  default_cap: 500
+  caps:
+    # POST-policy API (thesis-critical) — keep (nearly) all
+    createPresignedPost:     2000
+    generate_presigned_post: 2000
+    PostObjectV4:            2000
+    presigned_post:         2000
+    # GET/PUT paths — moderate
+    generate_presigned_url: 1500
+    GetPreSignedURL:        2000
+    PresignPutObject:       2000
+    PresignGetObject:       2000
+    presignPutObject:       2000
+    generatePresignedUrl:   2000
+    presigned_url:          2000
+    createPresignedRequest: 2000
+    S3Presigner:            2000
+    NewPresignClient:       2000
+    GetPreSignedUrlRequest: 2000
+    s3-request-presigner:   2000
+    # noisy + CloudFront-contaminated — cap hard (per language)
+    getSignedUrl:            750
+
+# --- query set ---
+# Distinctive generation-call token + language filter. High recall is the goal;
+# false positives (e.g. CloudFront getSignedUrl) are removed in Phase 2 coding.
+queries:
+  # Python (boto3)
+  - {term: "generate_presigned_url",  language: "Python"}
+  - {term: "generate_presigned_post", language: "Python"}
+  # JavaScript / TypeScript (aws-sdk v2 + v3)
+  - {term: "createPresignedPost",     language: "JavaScript"}
+  - {term: "createPresignedPost",     language: "TypeScript"}
+  - {term: "getSignedUrl",            language: "JavaScript"}
+  - {term: "getSignedUrl",            language: "TypeScript"}
+  - {term: "s3-request-presigner",    language: "TypeScript"}
+  # Go (aws-sdk-go-v2 presign client)
+  - {term: "PresignPutObject",        language: "Go"}
+  - {term: "PresignGetObject",        language: "Go"}
+  - {term: "NewPresignClient",        language: "Go"}
+  # Java (aws-sdk-java v2 S3Presigner + v1 generatePresignedUrl)
+  - {term: "S3Presigner",             language: "Java"}
+  - {term: "presignPutObject",        language: "Java"}
+  - {term: "generatePresignedUrl",    language: "Java"}
+  # .NET (AWS SDK for .NET)
+  - {term: "GetPreSignedURL",         language: "C#"}
+  - {term: "GetPreSignedUrlRequest",  language: "C#"}
+  # Ruby (aws-sdk-ruby v3)
+  - {term: "presigned_post",          language: "Ruby"}
+  - {term: "presigned_url",           language: "Ruby"}
+  # PHP (aws-sdk-php)
+  - {term: "createPresignedRequest",  language: "PHP"}
+  - {term: "PostObjectV4",            language: "PHP"}

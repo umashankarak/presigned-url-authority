@@ -1,0 +1,141 @@
+{
+  "source": "hits.merged.jsonl",
+  "seed": 42,
+  "total": 187485,
+  "kept": 23994,
+  "breakdown": [
+    {
+      "term": "getSignedUrl",
+      "language": "TypeScript",
+      "total": 59730,
+      "kept": 750,
+      "cap": 750
+    },
+    {
+      "term": "generate_presigned_url",
+      "language": "Python",
+      "total": 47650,
+      "kept": 1500,
+      "cap": 1500
+    },
+    {
+      "term": "getSignedUrl",
+      "language": "JavaScript",
+      "total": 30019,
+      "kept": 750,
+      "cap": 750
+    },
+    {
+      "term": "createPresignedRequest",
+      "language": "PHP",
+      "total": 11040,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "S3Presigner",
+      "language": "Java",
+      "total": 9768,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "generatePresignedUrl",
+      "language": "Java",
+      "total": 8830,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "GetPreSignedURL",
+      "language": "C#",
+      "total": 5355,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "NewPresignClient",
+      "language": "Go",
+      "total": 3337,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "presigned_url",
+      "language": "Ruby",
+      "total": 2617,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "createPresignedPost",
+      "language": "TypeScript",
+      "total": 2145,
+      "kept": 2000,
+      "cap": 2000
+    },
+    {
+      "term": "generate_presigned_post",
+      "language": "Python",
+      "total": 1924,
+      "kept": 1924,
+      "cap": 2000
+    },
+    {
+      "term": "PostObjectV4",
+      "language": "PHP",
+      "total": 1560,
+      "kept": 1560,
+      "cap": 2000
+    },
+    {
+      "term": "presigned_post",
+      "language": "Ruby",
+      "total": 902,
+      "kept": 902,
+      "cap": 2000
+    },
+    {
+      "term": "PresignGetObject",
+      "language": "Go",
+      "total": 844,
+      "kept": 844,
+      "cap": 2000
+    },
+    {
+      "term": "createPresignedPost",
+      "language": "JavaScript",
+      "total": 700,
+      "kept": 700,
+      "cap": 2000
+    },
+    {
+      "term": "s3-request-presigner",
+      "language": "TypeScript",
+      "total": 517,
+      "kept": 517,
+      "cap": 2000
+    },
+    {
+      "term": "PresignPutObject",
+      "language": "Go",
+      "total": 242,
+      "kept": 242,
+      "cap": 2000
+    },
+    {
+      "term": "GetPreSignedUrlRequest",
+      "language": "C#",
+      "total": 209,
+      "kept": 209,
+      "cap": 2000
+    },
+    {
+      "term": "presignPutObject",
+      "language": "Java",
+      "total": 96,
+      "kept": 96,
+      "cap": 2000
+    }
+  ]
+}

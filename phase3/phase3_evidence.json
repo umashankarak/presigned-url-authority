@@ -1,0 +1,61 @@
+{
+  "account": "<redacted>",
+  "region": "us-east-1",
+  "results": [
+    {
+      "test": "T1",
+      "claim": "empty-prefix POST permits writing to an arbitrary key",
+      "expected": "S3 accepts the write (2xx)",
+      "observed": "HTTP 204 to key 'attacker-controlled/somewhere-else.txt'",
+      "result": "PASS",
+      "evidence": {
+        "http_status": 204,
+        "written_key": "attacker-controlled/somewhere-else.txt"
+      }
+    },
+    {
+      "test": "T2",
+      "claim": "prefix-scoped POST rejects writes outside the prefix",
+      "expected": "S3 rejects the write (4xx)",
+      "observed": "HTTP 403 to key 'secrets/stolen.txt'",
+      "result": "PASS",
+      "evidence": {
+        "http_status": 403
+      }
+    },
+    {
+      "test": "T3",
+      "claim": "signed PUT imposes NO size limit (headline: unbounded write)",
+      "expected": "S3 accepts a 50 MB body with no size condition",
+      "observed": "HTTP 200 for 50 MB PUT",
+      "result": "PASS",
+      "evidence": {
+        "http_status": 200,
+        "body_bytes": 52428800
+      }
+    },
+    {
+      "test": "T4",
+      "claim": "POST content-length-range enforces the size cap server-side",
+      "expected": "S3 rejects a body over the 1024-byte cap",
+      "observed": "HTTP 400 for oversized POST",
+      "result": "PASS",
+      "evidence": {
+        "http_status": 400,
+        "cap_bytes": 1024,
+        "sent_bytes": 102400
+      }
+    },
+    {
+      "test": "T5",
+      "claim": "editing the key in a signed GET URL invalidates the signature",
+      "expected": "tampered URL -> HTTP 403 (SignatureDoesNotMatch)",
+      "observed": "HTTP 403 for key-swapped GET",
+      "result": "PASS",
+      "evidence": {
+        "http_status": 403,
+        "note": "confirms GET key-swap is NOT an over-grant vector"
+      }
+    }
+  ]
+}

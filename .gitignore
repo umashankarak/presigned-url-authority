@@ -1,0 +1,32 @@
+# ---- never commit: identifies repositories or contains third-party code ----
+phase1/phase1_out/
+**/blobs/
+**/hits*.jsonl
+**/filtered.jsonl
+**/deduped.jsonl
+**/sample.jsonl
+**/post_targeted.jsonl
+**/repos.json
+phase2/phase2_out/
+**/coding_sheet*.csv
+**/coding_sheet*.xlsx
+phase2_extractor/fixtures/
+**/fixtures/blobs/
+**/peek_sample.jsonl
+
+# ---- secrets and local config ----
+.env
+*.pem
+.aws/
+
+# ---- build and editor noise ----
+__pycache__/
+*.pyc
+node_modules/
+package-lock.json
+package.json
+.DS_Store
+
+# ---- reviewer-only supplementary material: never commit ----
+supplementary*/
+supplementary*.zip

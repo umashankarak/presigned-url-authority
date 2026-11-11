@@ -93,7 +93,7 @@ const key = req.query.file;                                  // USER_RAW
 | --- | --- |
 | `AUTHZ_PRESENT` | A check ties the request to the authenticated caller and the requested object, or the key prefix is derived from the caller's authenticated identity |
 | `AUTHN_ONLY` | The handler checks that the caller is logged in but not that the caller may access the object |
-| `NONE` | No authorization mechanism is visible for the handler. A guard referenced but not shown is `INDETERMINATE` |
+| `NONE` | The visible code issues the URL with no check before generation and references no authentication or authorization machinery (decorator, middleware, guard). Machinery that is referenced but not shown is `INDETERMINATE` |
 
 ```python
 @login_required                       # AUTHN_ONLY: logged in, any document
@@ -127,8 +127,8 @@ boto3.client("s3")                                             # ROLE_OR_CHAIN
 | --- | --- |
 | `BOUNDED_POST` | POST policy with a `content-length-range` condition |
 | `UNBOUNDED_POST` | POST policy with visible conditions and no `content-length-range` |
-| `APP_BOUNDED_PUT` | PUT URL generated with the expected content length specified, or the server checks the file size before issuing it |
-| `UNBOUNDED_PUT` | PUT upload URL with neither of the above |
+| `APP_BOUNDED_PUT` | PUT URL generated with the expected content length signed into it, so S3 rejects a body of any other length |
+| `UNBOUNDED_PUT` | PUT upload URL whose content length is not signed |
 | `N_A` | The coded call generates a download URL |
 
 ```python
@@ -145,9 +145,20 @@ s3.generate_presigned_url("put_object", Params={"Bucket": b, "Key": k})
 ```
 
 ```ruby
-# APP_BOUNDED_PUT: expected content length specified when signing
+# APP_BOUNDED_PUT: content length signed (whitelist_headers puts it in the signature)
 obj.presigned_url(:put, content_length: size, whitelist_headers: ["content-length"])
 ```
+
+```go
+// APP_BOUNDED_PUT: setting ContentLength adds content-length to the signed headers
+presigner.PresignPutObject(ctx, &s3.PutObjectInput{
+    Bucket: aws.String(b), Key: aws.String(k), ContentLength: aws.Int64(size)})
+```
+
+A server-side check of a size the client declares, made before signing, does
+not limit what the URL holder uploads. Such a site is coded `UNBOUNDED_PUT`
+when the signing call is visible and does not sign the content length, and
+`INDETERMINATE` when the signing parameters are not visible.
 
 ## JF5 — Expiry (`JF5_expiry_bucket`, `JF5_expiry_appropriateness`)
 

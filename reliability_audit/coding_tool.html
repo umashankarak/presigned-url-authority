@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Coding Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5d6676; --line: #dde1e7;
+  --accent: #2459c7; --accent-soft: #e6eefc; --done: #1f7a4d; --done-soft: #e3f4ea;
+  --warn: #9a5b00; --warn-soft: #fff3dc; --code-bg: #f2f4f7; --hit: #fff1a8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c; --panel: #1c2027; --ink: #e6e9ee; --muted: #9aa3b2; --line: #2e3440;
+    --accent: #7aa2ff; --accent-soft: #23304d; --done: #5fd39a; --done-soft: #1d3329;
+    --warn: #f2b45a; --warn-soft: #3a2e1a; --code-bg: #12151a; --hit: #4d4413;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 16px; margin: 0 8px 0 0; }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+#status { color: var(--muted); font-size: 13px; }
+#status.ok { color: var(--done); } #status.warn { color: var(--warn); }
+.progress { flex: 1; min-width: 160px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--done); width: 0; transition: width .2s; }
+main { display: grid; grid-template-columns: 170px minmax(0, 1fr) 380px; gap: 12px; padding: 12px 16px; align-items: start; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr; } #list { max-height: 160px; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+#list { max-height: calc(100vh - 90px); overflow: auto; position: sticky; top: 64px; }
+#list div { padding: 5px 10px; cursor: pointer; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+#list div.cur { background: var(--accent-soft); font-weight: 600; }
+#list div .d { color: var(--done); } #list div .p { color: var(--warn); } #list div .e { color: var(--muted); }
+#site { padding: 14px 16px; min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+.meta b { color: var(--ink); font-weight: 600; }
+h2 { font-size: 15px; margin: 4px 0 8px; }
+h3 { font-size: 13px; margin: 14px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 0; overflow: auto; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre .ln { display: block; padding: 0 12px 0 0; white-space: pre; }
+pre .ln::before { content: attr(data-n); display: inline-block; width: 3.2em; padding-right: .8em; text-align: right; color: var(--muted); user-select: none; }
+pre .ln.hit { background: var(--hit); }
+#fields { padding: 12px 14px; position: sticky; top: 64px; max-height: calc(100vh - 90px); overflow: auto; }
+.field { border-bottom: 1px solid var(--line); padding: 8px 0 10px; }
+.field:last-of-type { border-bottom: 0; }
+.field .name { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; }
+.field .name span { color: var(--muted); font-weight: 400; }
+.codes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.codes button { padding: 3px 8px; font-size: 12px; border-radius: 5px; }
+.codes button.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rule { font-size: 12px; color: var(--muted); margin-top: 5px; min-height: 1em; }
+.nc { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 4px; }
+textarea { width: 100%; font: inherit; font-size: 13px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); min-height: 54px; }
+.nav { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+#start { max-width: 720px; margin: 40px auto; padding: 24px 28px; }
+#start ol { padding-left: 20px; } #start li { margin: 6px 0; }
+.note { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 8px 10px; font-size: 13px; margin-top: 10px; }
+dialog { max-width: 820px; width: 92vw; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); padding: 0; }
+dialog::backdrop { background: rgba(0,0,0,.4); }
+dialog .in { padding: 18px 22px; max-height: 80vh; overflow: auto; }
+dialog table { border-collapse: collapse; width: 100%; font-size: 13px; margin-bottom: 10px; }
+dialog td, dialog th { border-bottom: 1px solid var(--line); text-align: left; padding: 5px 6px; vertical-align: top; }
+dialog code { font-size: 12px; }
+.hidden { display: none !important; }
+kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Audit Coding Tool</h1>
+  <button id="openBtn" class="primary">Open audit_coder2_completed.xlsx</button>
+  <input id="fileInput" type="file" accept=".xlsx" class="hidden">
+  <button id="rulesBtn">Codebook rules</button>
+  <button id="downloadBtn" class="hidden">Download updated file</button>
+  <div class="progress" title="Rows complete"><div id="bar"></div></div>
+  <span id="count"></span>
+  <span id="status">No file open</span>
+</header>
+
+<section id="start" class="panel">
+  <h2>Before you start</h2>
+  <ol>
+    <li>Make a copy of <b>audit_coder2.xlsx</b> and name it <b>audit_coder2_completed.xlsx</b>. Keep the original untouched.</li>
+    <li>Open this page in <b>Chrome or Edge</b>. Click <b>Open audit_coder2_completed.xlsx</b> and allow the page to edit the file when asked. Every choice you make is saved straight into that file.</li>
+    <li>For each site, read the code on the left (the highlighted line is where the search term matched; code the first presigning call at or after it) and choose one code per question on the right. The rule for each code shows when you choose it; <b>Codebook rules</b> shows them all.</li>
+    <li>When every row is complete, write the date in the notes of row A001 and send the file back.</li>
+  </ol>
+  <p>Keys: <kbd>&larr;</kbd> <kbd>&rarr;</kbd> previous and next site, <kbd>N</kbd> next incomplete site (outside the notes box).</p>
+  <div class="note">Code from the window and the codebook only. Do not use AI tools or look the repositories up online. In Safari or Firefox the page cannot save into the file: use <b>Download updated file</b> often, and replace your copy with it.</div>
+</section>
+
+<main id="app" class="hidden">
+  <nav id="list" class="panel"></nav>
+  <section id="site" class="panel">
+    <div class="meta" id="meta"></div>
+    <h3>Code window</h3>
+    <pre id="win"></pre>
+    <div id="refWrap">
+      <h3>Referenced snippet (same file)</h3>
+      <pre id="ref"></pre>
+    </div>
+  </section>
+  <aside id="fields" class="panel">
+    <div id="fieldList"></div>
+    <h3>Notes (optional)</h3>
+    <textarea id="notes" placeholder="Anything hard about this site"></textarea>
+    <div class="nav">
+      <button id="prevBtn">&larr; Previous</button>
+      <button id="nextBtn">Next &rarr;</button>
+      <button id="nextOpenBtn">Next incomplete</button>
+    </div>
+  </aside>
+</main>
+
+<dialog id="rules"><div class="in" id="rulesBody"></div></dialog>
+
+<script>
+const FIELDS = [
+  { key: "JF1_post_key_tightness", label: "Key scope (POST policies)", codes: {
+    EXACT: "An exact-match condition on $key, or a key fixed at signing time (including a key that embeds user input).",
+    PREFIX: "A starts-with condition on $key with a non-empty value.",
+    EMPTY_PREFIX: "A starts-with condition on $key with an empty value.",
+    UNSCOPED_KEY: "No condition restricts the key, and the client supplies it at upload time.",
+    N_A: "The coded call is not a POST policy.",
+    INDETERMINATE: "The visible code does not settle the key condition." } },
+  { key: "JF2_key_provenance", label: "Key origin", codes: {
+    SERVER: "Random identifier, timestamp, database identifier, or authenticated-session value, with no user-supplied part.",
+    USER_SANITIZED: "A user-supplied part passes through validation or character filtering applied to the key.",
+    USER_RAW: "A user-supplied part enters the key without validation.",
+    INDETERMINATE: "The key is built outside the window or cannot be traced." } },
+  { key: "JF2_authz_gate", label: "Authorization", codes: {
+    AUTHZ_PRESENT: "A check ties the request to the authenticated caller and the requested object, or the key prefix is derived from the caller's authenticated identity.",
+    AUTHN_ONLY: "The handler checks that the caller is logged in but not that the caller may access the object.",
+    NONE: "No authorization mechanism is visible for the handler.",
+    INDETERMINATE: "A guard is referenced but not shown, or the handler is outside the window." } },
+  { key: "JF3_credential_lifetime", label: "Credential type", codes: {
+    LONG_LIVED_IAM: "Explicit access key and secret key, including values read from environment variables.",
+    STS_TEMPORARY: "Assumed-role or session credentials.",
+    ROLE_OR_CHAIN: "Client created without explicit credentials (default provider chain).",
+    INDETERMINATE: "The client or its credentials are created outside the window." } },
+  { key: "JF4_upload_size_exposure", label: "Size bound", codes: {
+    BOUNDED_POST: "POST policy with a content-length-range condition.",
+    UNBOUNDED_POST: "POST policy with visible conditions and no content-length-range.",
+    APP_BOUNDED_PUT: "PUT URL signed with the expected content length, so the length is part of the signature.",
+    UNBOUNDED_PUT: "PUT upload URL whose content length is not signed.",
+    N_A: "The coded call generates a download URL.",
+    INDETERMINATE: "The conditions or signing parameters are not visible." } },
+  { key: "JF5_expiry_bucket", label: "Expiry length", codes: {
+    SHORT: "Up to 15 minutes.",
+    MODERATE: "Over 15 minutes, up to 1 hour.",
+    LONG: "Over 1 hour, up to 24 hours.",
+    VERY_LONG: "Over 24 hours, up to 7 days.",
+    DEFAULT_UNSET: "No expiry passed, so the SDK default applies.",
+    INDETERMINATE: "The expiry value is set outside the window." } },
+  { key: "JF5_expiry_appropriateness", label: "Expiry fit", codes: {
+    APPROPRIATE: "The expiry fits the apparent use.",
+    OVER_LONG: "The expiry clearly exceeds the apparent use.",
+    INDETERMINATE: "Uncertain cases and generic utilities." } },
+];
+const GENERAL = [
+  "The highlighted line is where the search term matched; it can be an import. Code the first presigning call at or after it.",
+  "A POST key fixed at signing time is coded EXACT even when it contains user input; the user-supplied part goes under key origin.",
+  "Use INDETERMINATE whenever you would otherwise have to guess.",
+  "Expiry length: units follow the SDK, and duration arithmetic is evaluated (for example, 60 * 15 seconds is 15 minutes).",
+  "NOT_CODED fields are outside that sample and are left as they are.",
+];
+
+let wb, ws, header = [], rows = [], idx = 0, handle = null, saveTimer = null, dirty = false;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function setStatus(text, cls = "") { const s = $("status"); s.textContent = text; s.className = cls; }
+
+function cellVal(r, name) {
+  const c = header.indexOf(name); if (c < 0) return "";
+  const cell = ws[XLSX.utils.encode_cell({ r, c })];
+  return cell ? String(cell.v ?? "").trim() : "";
+}
+function setCell(r, name, v) {
+  const c = header.indexOf(name); if (c < 0) return;
+  const addr = XLSX.utils.encode_cell({ r, c });
+  if (v === "" || v == null) delete ws[addr]; else ws[addr] = { t: "s", v };
+  dirty = true; scheduleSave();
+}
+
+function load(buf) {
+  wb = XLSX.read(buf, { type: "array" });
+  ws = wb.Sheets["audit"];
+  if (!ws) { alert("This file has no 'audit' sheet. Open audit_coder2_completed.xlsx."); return false; }
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  header = [];
+  for (let c = range.s.c; c <= range.e.c; c++) { const h = ws[XLSX.utils.encode_cell({ r: 0, c })]; header.push(h ? String(h.v).trim() : ""); }
+  for (const f of FIELDS) if (!header.includes(f.key)) { alert("Column missing: " + f.key); return false; }
+  rows = [];
+  for (let r = 1; r <= range.e.r; r++) if (cellVal(r, "audit_id")) rows.push(r);
+  if (!rows.length) { alert("No rows found."); return false; }
+  $("start").classList.add("hidden"); $("app").classList.remove("hidden");
+  idx = Math.max(0, rows.findIndex(r => !complete(r))); if (idx < 0) idx = 0;
+  renderList(); render(); return true;
+}
+
+function needed(r) { return FIELDS.filter(f => cellVal(r, f.key).toUpperCase() !== "NOT_CODED"); }
+function filled(r) { return needed(r).filter(f => FIELDS.find(x => x.key === f.key).codes[cellVal(r, f.key).toUpperCase()]).length; }
+function complete(r) { return filled(r) === needed(r).length; }
+
+function renderList() {
+  const done = rows.filter(complete).length;
+  $("bar").style.width = (100 * done / rows.length) + "%";
+  $("count").textContent = `${done} of ${rows.length} complete`;
+  $("list").innerHTML = rows.map((r, i) => {
+    const n = filled(r), t = needed(r).length;
+    const cls = n === t ? "d" : n ? "p" : "e", mark = n === t ? "done" : `${n}/${t}`;
+    return `<div data-i="${i}" class="${i === idx ? "cur" : ""}">${esc(cellVal(r, "audit_id"))}<span class="${cls}">${mark}</span></div>`;
+  }).join("");
+  const cur = $("list").querySelector(".cur"); if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+
+function codeBlock(text, term) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  const t = String(term || "").toLowerCase();
+  return lines.map((l, i) => `<span class="ln${t && l.toLowerCase().includes(t) ? " hit" : ""}" data-n="${i + 1}">${esc(l) || " "}</span>`).join("");
+}
+
+function render() {
+  const r = rows[idx];
+  $("meta").innerHTML = [
+    ["Site", cellVal(r, "audit_id")], ["Sample", cellVal(r, "sample")], ["Language", cellVal(r, "language_query")],
+    ["Search term", cellVal(r, "term")], ["Tool's mechanism guess", cellVal(r, "mechanism")], ["File", cellVal(r, "path")],
+  ].filter(([, v]) => v).map(([k, v]) => `<span>${k}: <b>${esc(v)}</b></span>`).join("");
+  $("win").innerHTML = codeBlock(cellVal(r, "call_site_window"), cellVal(r, "term"));
+  const ref = cellVal(r, "referenced_snippet");
+  $("refWrap").classList.toggle("hidden", !ref);
+  $("ref").innerHTML = ref ? codeBlock(ref, "") : "";
+  $("fieldList").innerHTML = FIELDS.map(f => {
+    const v = cellVal(r, f.key).toUpperCase();
+    if (v === "NOT_CODED") return `<div class="field"><div class="name">${f.label}</div><div class="nc">Not coded in this sample</div></div>`;
+    const btns = Object.keys(f.codes).map(c => `<button data-f="${f.key}" data-c="${c}" class="${v === c ? "sel" : ""}" title="${esc(f.codes[c])}">${c}</button>`).join("");
+    return `<div class="field"><div class="name">${f.label}<span>${esc(f.key)}</span></div><div class="codes">${btns}</div><div class="rule">${v && f.codes[v] ? esc(f.codes[v]) : ""}</div></div>`;
+  }).join("");
+  $("notes").value = cellVal(r, "notes");
+  $("prevBtn").disabled = idx === 0; $("nextBtn").disabled = idx === rows.length - 1;
+  window.scrollTo({ top: 0 });
+}
+
+function go(i) { if (i < 0 || i >= rows.length) return; idx = i; renderList(); render(); }
+function nextOpen() {
+  for (let k = 1; k <= rows.length; k++) { const i = (idx + k) % rows.length; if (!complete(rows[i])) return go(i); }
+  setStatus("All rows complete", "ok");
+}
+
+function bytes() { return XLSX.write(wb, { type: "array", bookType: "xlsx" }); }
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  if (!handle) { setStatus("Unsaved changes: use Download updated file", "warn"); return; }
+  setStatus("Saving…");
+  saveTimer = setTimeout(save, 400);
+}
+async function save() {
+  try {
+    const w = await handle.createWritable();
+    await w.write(new Blob([bytes()])); await w.close();
+    dirty = false;
+    setStatus("Saved " + new Date().toLocaleTimeString(), "ok");
+  } catch (e) {
+    setStatus("Could not save into the file. Use Download updated file. (" + e.message + ")", "warn");
+    $("downloadBtn").classList.remove("hidden");
+  }
+}
+function download() {
+  const blob = new Blob([bytes()], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "audit_coder2_completed.xlsx"; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  dirty = false; setStatus("Downloaded " + new Date().toLocaleTimeString(), "ok");
+}
+
+$("openBtn").onclick = async () => {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await window.showOpenFilePicker({ types: [{ description: "Excel", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }] });
+      const perm = await h.requestPermission({ mode: "readwrite" });
+      const file = await h.getFile();
+      if (!/completed/i.test(file.name) && !confirm(`You opened "${file.name}". The page will save into this file. Continue?`)) return;
+      if (load(await file.arrayBuffer())) {
+        handle = perm === "granted" ? h : null;
+        if (!handle) $("downloadBtn").classList.remove("hidden");
+        setStatus(handle ? "Opened " + file.name + "; changes save automatically" : "Opened read-only; use Download updated file", handle ? "ok" : "warn");
+      }
+    } catch (e) { if (e.name !== "AbortError") alert(e.message); }
+  } else {
+    $("fileInput").click();
+  }
+};
+$("fileInput").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (load(await f.arrayBuffer())) { $("downloadBtn").classList.remove("hidden"); setStatus("This browser cannot save into the file; download often", "warn"); }
+};
+$("downloadBtn").onclick = download;
+$("fieldList").onclick = e => {
+  const b = e.target.closest("button[data-f]"); if (!b) return;
+  const r = rows[idx], cur = cellVal(r, b.dataset.f).toUpperCase();
+  setCell(r, b.dataset.f, cur === b.dataset.c ? "" : b.dataset.c);
+  render(); renderList();
+};
+$("notes").oninput = e => setCell(rows[idx], "notes", e.target.value);
+$("list").onclick = e => { const d = e.target.closest("div[data-i]"); if (d) go(+d.dataset.i); };
+$("prevBtn").onclick = () => go(idx - 1);
+$("nextBtn").onclick = () => go(idx + 1);
+$("nextOpenBtn").onclick = nextOpen;
+document.addEventListener("keydown", e => {
+  if (!rows.length || e.target.tagName === "TEXTAREA" || $("rules").open) return;
+  if (e.key === "ArrowRight") go(idx + 1);
+  else if (e.key === "ArrowLeft") go(idx - 1);
+  else if (e.key.toLowerCase() === "n") nextOpen();
+});
+window.addEventListener("beforeunload", e => { if (dirty && !handle) { e.preventDefault(); e.returnValue = ""; } });
+
+$("rulesBody").innerHTML =
+  `<div style="display:flex;justify-content:space-between;align-items:center"><h2>Codebook rules</h2><button onclick="document.getElementById('rules').close()">Close</button></div>` +
+  `<h3>General</h3><ul>${GENERAL.map(g => `<li>${esc(g)}</li>`).join("")}</ul>` +
+  FIELDS.map(f => `<h3>${esc(f.label)} <code>${f.key}</code></h3><table>${Object.entries(f.codes).map(([c, t]) => `<tr><td><code>${c}</code></td><td>${esc(t)}</td></tr>`).join("")}</table>`).join("");
+$("rulesBtn").onclick = () => $("rules").showModal();
+</script>
+</body>
+</html>

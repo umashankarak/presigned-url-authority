@@ -30,3 +30,12 @@ package.json
 # ---- reviewer-only supplementary material: never commit ----
 supplementary*/
 supplementary*.zip
+
+# ---- reliability audit: identified files stay private ----
+**/audit_key.csv
+**/practice_key.csv
+**/audit_coder2*.xlsx
+**/practice_coder2*.xlsx
+**/audit_manifest.json
+**/practice_notes.md
+reliability_audit/audit_disagreements.csv

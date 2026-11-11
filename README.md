@@ -9,9 +9,10 @@ eight languages and reproduced each authority pattern on an author-owned S3
 bucket. With this repository you can:
 
 1. recompute every number in the paper's Results section (two commands, no AWS account needed),
-2. regenerate the two figures,
-3. rerun the SDK checks cited in the Background section (no AWS account needed), and
-4. rerun the ground-truth validation on your own AWS account.
+2. recompute the coding-reliability agreement (Cohen's kappa) from the second coder's independent codes,
+3. regenerate the two figures,
+4. rerun the SDK checks cited in the Background section (no AWS account needed), and
+5. rerun the ground-truth validation on your own AWS account.
 
 ## Repository layout
 
@@ -33,11 +34,21 @@ bucket. With this repository you can:
 │   ├── analyze_phase2.py        # computes all Results numbers and intervals
 │   ├── check_paper_numbers.py   # confirms the output matches the paper
 │   ├── deidentify.py            # how the public data files were produced
+│   ├── corrections/             # the two documented code changes (already applied)
 │   ├── data/
 │   │   ├── blind_sample_coded.xlsx    # 383 coded sites (blind sample)
 │   │   └── targeted_post_coded.xlsx   # 238 coded sites (targeted POST sample)
 │   └── results/
 │       └── phase2_results.txt   # analysis output behind the paper's numbers
+├── reliability_audit/
+│   ├── draw_audit_sample.py     # draws the 80-site audit sample (seed 20261107)
+│   ├── coding_tool.html         # browser tool the second coder used
+│   ├── deidentify_audit.py      # writes the two public code files below
+│   ├── audit_final_codes.csv    # final codes at the time of the audit
+│   ├── audit_second_coder_codes.csv  # the second coder's independent codes
+│   ├── kappa_audit.py           # agreement and Cohen's kappa per field
+│   ├── audit_agreement.txt      # output behind the paper's agreement table
+│   └── audit_resolutions.csv    # how each of the 14 disagreements was resolved
 ├── phase3/
 │   ├── phase3_validation.py     # ground-truth tests T1–T5 on an owned bucket
 │   ├── phase3_evidence.json     # results of the run reported in the paper
@@ -62,8 +73,12 @@ python3 analyze_phase2.py data/blind_sample_coded.xlsx data/targeted_post_coded.
 python3 check_paper_numbers.py results/phase2_results.txt
 ```
 
-The last command checks 35 numbers against the paper and should end with
-`35/35 paper numbers confirmed`.
+The last command checks 49 numbers against the paper and should end with
+`49/49 paper numbers confirmed`. Sections 10 to 12 of the output hold the
+stratum-weighted estimates, the bounds over all eligible sites (each
+indeterminate site counted first as safe and then as over-granting), and the
+denominator flow behind the paper's table of coded, indeterminate, and
+determinable sites.
 
 Analysis rules, as stated in the paper:
 
@@ -73,7 +88,38 @@ Analysis rules, as stated in the paper:
 
 The data files are described column by column in `CODEBOOK.md`.
 
-## 2. Regenerate the figures
+### Data corrections
+
+The data files include two documented changes, both already applied. The
+scripts in `phase2/corrections/` record exactly what changed:
+
+- `reclassify_put_size.py`: one PUT site (`B0006`) recoded from bounded to
+  indeterminate under the PUT size rule in `CODEBOOK.md` (a PUT URL counts as
+  bounded only when its content length is signed).
+- `apply_audit_resolutions.py`: seven changes from the coding-reliability
+  audit (six codes and one site found to be library source and made
+  ineligible); see `reliability_audit/audit_resolutions.csv`.
+
+## 2. Reproduce the coding-reliability agreement
+
+A second coder independently coded 80 eligible sites after the main coding was
+complete, from the same extraction windows and codebook, without access to the
+final codes and without AI tools. The sample oversamples authorization cases
+(20 coded none, 20 indeterminate, 10 with a check, 10 other upload sites, and
+20 targeted POST sites), so the values describe this subset.
+
+```bash
+cd reliability_audit
+python3 kappa_audit.py audit_final_codes.csv audit_second_coder_codes.csv
+```
+
+Expected: agreement 93.8% to 98.3% and Cohen's kappa 0.89 to 0.97 on all seven
+fields, with 14 disagreements. The final codes are those at the time of the
+audit, before the disagreements were resolved; `row_id` links each audit site to
+the public data files. The coder sheets themselves hold extracted source code
+and are not public.
+
+## 3. Regenerate the figures
 
 ```bash
 cd figures
@@ -81,7 +127,7 @@ python3 make_figure1.py    # Figure 1: study pipeline
 python3 make_figure2.py    # Figure 2: over-grant rates with 95% intervals
 ```
 
-## 3. Check the SDK behaviors cited in the paper (no AWS account needed)
+## 4. Check the SDK behaviors cited in the paper (no AWS account needed)
 
 Generating a presigned URL or POST policy is a local computation, so these
 checks send nothing to AWS. The SDKs only require credentials to be present;
@@ -112,10 +158,10 @@ node check_js_default.mjs
 The paper reports these results for boto3 1.42.97 and
 `@aws-sdk/s3-request-presigner` 3.1140.0.
 
-## 4. Rerun the ground-truth validation (your own AWS account)
+## 5. Rerun the ground-truth validation (your own AWS account)
 
 **Run this only in an AWS account you own.** It needs real credentials allowed
-to create and delete an S3 bucket (unset the example credentials from step 3
+to create and delete an S3 bucket (unset the example credentials from step 4
 first). The script creates one uniquely named bucket, runs five tests against
 it, and deletes the bucket and all objects when it finishes, even if a test
 fails. It contacts no other bucket. Cost is well under one cent.
@@ -166,9 +212,10 @@ those together with the security codes would amount to a list of
 identifiable, possibly still-deployed projects paired with their weaknesses.
 
 The identified coding sheets (repository, path, SHA, extracted code window,
-coder notes, and codes, keyed by the same `row_id`) were provided to the
-journal's reviewers as confidential supplementary material. They are
-available from the author on reasonable request for research verification.
+coder notes, and codes, keyed by the same `row_id`) and the second coder's
+working sheets are not public for the same reason. They are available to the
+journal's editor and reviewers, and from the author on reasonable request for
+research verification.
 
 ## Citation
 

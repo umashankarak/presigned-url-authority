@@ -1,0 +1,9 @@
+### second coder vs final (inter-rater)
+  field                             n   agree   kappa
+  JF1_post_key_tightness           48   93.8%    0.89
+  JF2_key_provenance               60   96.7%    0.95
+  JF2_authz_gate                   60   95.0%    0.92
+  JF3_credential_lifetime          60   98.3%    0.90
+  JF4_upload_size_exposure         80   97.5%    0.97
+  JF5_expiry_bucket                60   96.7%    0.94
+  JF5_expiry_appropriateness       60   98.3%    0.96

@@ -341,6 +341,131 @@ short = sum(1 for v in exp if v in ("SHORT", "MODERATE"))
 print("\n### Expiry of one hour or less (blind)")
 print(f"    expiry <= 1 hour:                {frac(short, len(exp))}")
 
+# ---- 10. Stratum-weighted estimates (sensitivity check) ------------------
+# The blind sample over-represents the primary stratum (400 of 2,307 files)
+# relative to the low-signal stratum (100 of 13,525). The headline rates above
+# are unweighted. Here each stratum's rate is weighted by that stratum's share
+# of the population the measure is drawn from:
+#   * blind-only measures  -> share of the deduplicated corpus (Phase 1 counts)
+#   * pooled POST measures -> share of the POST-policy pool, estimated from the
+#                             targeted sample, which is a random draw from it
+# CI: stratified normal approximation using Agresti-Coull adjusted stratum
+# proportions (stable when a stratum rate is 0 or 1); approximate by design.
+print("\n" + "-" * 78)
+print("10. STRATUM-WEIGHTED ESTIMATES  (sensitivity check on the unweighted rates)")
+print("-" * 78)
+
+CORPUS_STRATA = {"primary": 2307, "sample": 13525}   # deduplicated corpus, Phase 1
+
+
+def shares(counts: dict) -> dict:
+    tot = sum(counts.values())
+    return {k: v / tot for k, v in counts.items()}
+
+
+W_CORPUS = shares(CORPUS_STRATA)
+_post_pool = Counter(norm(r.get("stratum")) for r in post_coded)
+W_POST = shares({k: _post_pool.get(k, 0) for k in CORPUS_STRATA})
+
+
+def weighted(rows: list[dict], field: str, bad: set[str], weights: dict, label: str) -> None:
+    est, var, parts = 0.0, 0.0, []
+    for h, w in weights.items():
+        det_h = determinable([r for r in rows if norm(r.get("stratum")) == h], field)
+        n_h = len(det_h)
+        k_h = sum(1 for v in det_h if v in bad)
+        if n_h == 0:
+            continue
+        est += w * k_h / n_h
+        pt = (k_h + 2) / (n_h + 4)
+        var += w * w * pt * (1 - pt) / (n_h + 4)
+        parts.append(f"{'primary' if h == 'primary' else 'low-signal'} {k_h}/{n_h}")
+    half = 1.96 * math.sqrt(var)
+    lo, hi = max(0.0, est - half), min(1.0, est + half)
+    print(f"    {label:34s} weighted {pct(est)}  [approx. 95% CI {pct(lo)}-{pct(hi)}]  ({'; '.join(parts)})")
+
+
+print(f"\n  weights, corpus (blind measures): primary {W_CORPUS['primary']:.3f}, low-signal {W_CORPUS['sample']:.3f}")
+print(f"  weights, POST pool (est. from targeted sample, {sum(_post_pool.values())} files): "
+      f"primary {W_POST['primary']:.3f}, low-signal {W_POST['sample']:.3f}\n")
+weighted(pooled_jf1, "JF1_post_key_tightness", {"EMPTY_PREFIX", "UNSCOPED_KEY"}, W_POST,
+         "write-anywhere POST key scope")
+weighted(post_all, "JF4_upload_size_exposure", {"UNBOUNDED_POST"}, W_POST,
+         "POST without size range")
+weighted(blind_put, "JF4_upload_size_exposure", {"UNBOUNDED_PUT"}, W_CORPUS,
+         "PUT without size bound")
+weighted(blind_elig, "JF2_authz_gate", {"NONE", "AUTHN_ONLY"}, W_CORPUS,
+         "no resource-level authorization")
+weighted(blind_elig, "JF2_key_provenance", {"USER_RAW"}, W_CORPUS,
+         "raw user-supplied key")
+
+# ---- 11. Bounds over all coded sites (indeterminate treated both ways) ---
+# Headline rates exclude indeterminate sites. These bounds show the rate over
+# every coded site if all indeterminate sites were safe (lower) or all were
+# over-granting (upper). N_A sites are excluded throughout.
+print("\n" + "-" * 78)
+print("11. BOUNDS OVER ALL CODED SITES  (indeterminate counted as safe / as over-grant)")
+print("-" * 78)
+
+
+def bounds(rows: list[dict], field: str, bad: set[str], label: str) -> None:
+    vals = [norm(r.get(field)) for r in rows]
+    vals = [v for v in vals if v and v != "N_A"]
+    n_all = len(vals)
+    n_ind = sum(1 for v in vals if v == "INDETERMINATE")
+    k = sum(1 for v in vals if v in bad)
+    n_det = n_all - n_ind
+    print(f"    {label:34s} determinable {k}/{n_det} = {pct(k / n_det)}; "
+          f"all coded {n_all} ({n_ind} indeterminate): "
+          f"{pct(k / n_all)} to {pct((k + n_ind) / n_all)}")
+
+
+bounds(pooled_jf1, "JF1_post_key_tightness", {"EMPTY_PREFIX", "UNSCOPED_KEY"},
+       "write-anywhere POST key scope")
+bounds(post_all, "JF4_upload_size_exposure", {"UNBOUNDED_POST"}, "POST without size range")
+bounds(blind_put, "JF4_upload_size_exposure", {"UNBOUNDED_PUT"}, "PUT without size bound")
+bounds(pooled_jf4, "JF4_upload_size_exposure", {"UNBOUNDED_POST", "UNBOUNDED_PUT"},
+       "all uploads without size bound")
+bounds(blind_elig, "JF2_authz_gate", {"NONE", "AUTHN_ONLY"}, "no resource-level authorization")
+bounds(blind_elig, "JF2_key_provenance", {"USER_RAW"}, "raw user-supplied key")
+bounds(blind_elig, "JF3_credential_lifetime", {"LONG_LIVED_IAM"}, "long-lived IAM keys")
+bounds(blind_elig, "JF5_expiry_appropriateness", {"OVER_LONG"}, "expiry longer than use")
+
+# ---- 12. Denominator flow (R1-9) -----------------------------------------
+print("\n" + "-" * 78)
+print("12. DENOMINATOR FLOW  (search hits to determinable sites)")
+print("-" * 78)
+FUNNEL = [  # Phase 1 reports (sampling_frame.md, subsample_report.json)
+    ("search hits (distinct files)", "187,485 (187,480)"),
+    ("capped subsample", "23,994 files, 16,567 repositories"),
+    ("after quality filter", "23,986"),
+    ("after near-duplicate removal", "15,832 (primary 2,307; low-signal 13,525)"),
+    ("drawn", "blind 500 (400 + 100); targeted POST 300 of 3,184"),
+]
+for stage, val in FUNNEL:
+    print(f"    {stage:34s} {val}")
+print(f"    {'extracted generation sites':34s} blind {len(blind_coded)}; targeted {len(post_coded)}; "
+      f"total {len(blind_coded) + len(post_coded)}")
+print(f"    {'eligible':34s} blind {len(blind_elig)}; targeted {len(post_elig)}")
+print(f"\n  {'dimension (sample)':40s} {'coded':>6s} {'indet':>6s} {'determ':>7s}")
+for label, rows_src, fld in [
+    ("key scope (blind POST)", blind_post, "JF1_post_key_tightness"),
+    ("key scope (targeted)", post_elig, "JF1_post_key_tightness"),
+    ("key scope (pooled)", pooled_jf1, "JF1_post_key_tightness"),
+    ("size bound, POST (pooled)", post_all, "JF4_upload_size_exposure"),
+    ("size bound, PUT (blind)", blind_put, "JF4_upload_size_exposure"),
+    ("size bound, all uploads (pooled)", pooled_jf4, "JF4_upload_size_exposure"),
+    ("key origin (blind)", blind_elig, "JF2_key_provenance"),
+    ("authorization (blind)", blind_elig, "JF2_authz_gate"),
+    ("credential type (blind)", blind_elig, "JF3_credential_lifetime"),
+    ("expiry length (blind)", blind_elig, "JF5_expiry_bucket"),
+    ("expiry fit (blind)", blind_elig, "JF5_expiry_appropriateness"),
+]:
+    vals = [norm(r.get(fld)) for r in rows_src]
+    vals = [v for v in vals if v and v != "N_A"]
+    ind = sum(1 for v in vals if v == "INDETERMINATE")
+    print(f"  {label:40s} {len(vals):6d} {ind:6d} {len(vals) - ind:7d}")
+
 print("\n" + "=" * 78)
 print("done. Denominators exclude INDETERMINATE; JF1/JF4 pool both sheets;")
 print("all other fields are BLIND-sample only. CIs are Wilson score, 95%.")

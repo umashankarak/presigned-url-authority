@@ -1,0 +1,15 @@
+audit_id,row_id,field,second_coder_code,final_code_at_audit,resolved_code,code_adopted,reason
+A016,B0268,JF2_authz_gate,NONE,INDETERMINATE,NONE,second coder,Whole request handler visible; no authentication or authorization check
+A022,B0194,JF2_key_provenance,USER_SANITIZED,SERVER,SERVER,final,Key built from a database identifier
+A022,B0194,JF5_expiry_bucket,MODERATE,SHORT,MODERATE,second coder,30 minutes is over 15 minutes and up to 1 hour
+A026,B0289,JF5_expiry_appropriateness,APPROPRIATE,INDETERMINATE,INDETERMINATE,final,Generic helper with a default expiry; codebook codes generic utilities as indeterminate
+A039,B0369,JF3_credential_lifetime,ROLE_OR_CHAIN,INDETERMINATE,INDETERMINATE,final,Client created by a helper not shown in the window
+A047,B0128,JF2_key_provenance,USER_SANITIZED,INDETERMINATE,INDETERMINATE,final,Origin of the key variable not visible
+A059,B0064,JF2_authz_gate,INDETERMINATE,AUTHZ_PRESENT,INDETERMINATE,second coder,"Key prefix is a resource identifier, not the caller's identity; controller filters outside the window"
+A059,B0064,JF4_upload_size_exposure,UNBOUNDED_POST,INDETERMINATE,UNBOUNDED_POST,second coder,All POST policy options visible; no content-length-range
+A065,B0357,JF1_post_key_tightness,EXACT,INDETERMINATE,INDETERMINATE,final,Key variable not visible; a filename placeholder would make it a prefix
+A065,B0357,JF2_authz_gate,NONE,INDETERMINATE,INDETERMINATE,final,Storage helper method; no request handler in the window
+A069,B0016,JF1_post_key_tightness,N_A,INDETERMINATE,N_A,second coder,"PUT URL, not a POST policy (no effect on any rate)"
+A069,B0016,JF4_upload_size_exposure,INDETERMINATE,UNBOUNDED_PUT,INDETERMINATE,second coder,Window ends before the signing parameters
+A074,T0116,JF1_post_key_tightness,N_A,INDETERMINATE,INELIGIBLE,excluded,Library source that defines presigning (SDK_SOURCE)
+A077,B0026,JF5_expiry_bucket,LONG,MODERATE,MODERATE,final,Exactly 1 hour is in the up-to-1-hour band

@@ -58,7 +58,7 @@ box(54, 59, 40, 13, "Targeted POST sample (seed 43)\n300 of %s POST-policy files
 
 arrow(26, 58.6, 26, 52.4); arrow(74, 58.6, 74, 52.4)
 box(6, 40, 40, 12, "Junk filter + eligibility screen\n383 coded \u2192 260 eligible\n(all five dimensions)", BLUE)
-box(54, 40, 40, 12, "Junk filter + eligibility screen\n238 coded \u2192 232 eligible\n(key scope and size bound)", BLUE)
+box(54, 40, 40, 12, "Junk filter + eligibility screen\n238 coded \u2192 231 eligible\n(key scope and size bound)", BLUE)
 
 # Analysis
 line(26, 39.6, 26, 33.4); line(74, 39.6, 74, 33.4)

@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 # (label, over-granted count, determinable sites)
 ROWS = [
     ("Write-anywhere POST key scope", 0, 164),
-    ("Unbounded POST upload", 37, 193),
-    ("Unbounded PUT upload", 30, 37),
+    ("Unbounded POST upload", 38, 194),
+    ("Unbounded PUT upload", 29, 35),
     ("Key from raw user input", 24, 139),
-    ("No resource-level authorization", 50, 86),
+    ("No resource-level authorization", 51, 86),
     ("Raw user key and no\nresource-level authorization", 17, 71),
 ]
 
